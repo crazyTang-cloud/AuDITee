@@ -23,7 +23,7 @@ INVALID_VALUE, LABELS = -1, [0, 1]
 dir_rslt_save = "../results/rslt.save/"
 
 
-def run_HumLa(human_dict=None, project_id=4, n_test=5505, seeds=range(1), verbose_int=0, is_plot=False):
+def run_HumLa(human_dict=None, project_id=0, seeds=range(1,4), verbose_int=0, is_plot=False):
     """ Core part for RQ1 and RQ2.
     Implement HumLa, ECo-HumLa, and the waiting-time method for JIT-SDP.
     We opt for them by referring to the input argument "human_dict" as:
@@ -43,7 +43,7 @@ def run_HumLa(human_dict=None, project_id=4, n_test=5505, seeds=range(1), verbos
 
     # prepare
     has_human, human_err, human_eff = analyze_human_dict(human_dict)
-    project_name = data_id_2name(project_id)
+    project_name, n_test = data_id_2name(project_id)
     if is_plot:
         x_lim, y_lim = None, None
 
@@ -526,7 +526,8 @@ def rslt_dir(clf_name, human_dict, project_id, wait_days, n_trees, theta_imb, th
     has_human, human_err, human_eff = analyze_human_dict(human_dict)
     # handle other inputs
     clf_name = clf_name.lower()
-    pre_to_dir = dir_rslt_save + data_id_2name(project_id) + "/" + clf_name
+    project_name, _ = data_id_2name(project_id)
+    pre_to_dir = dir_rslt_save + project_name + "/" + clf_name
     if has_human:
         pre_to_dir += "-human/effort"
         if isinstance(human_eff, (int, float)):

@@ -52,7 +52,7 @@ If you run a maven project make sure you have maven.
 ### run framework
 The main combination functions are in ```codes/```.
 First you need```cd codes/```.
-Then you can easily use script```python AuDITee_framework.py``` to run AuDITee quickly.
+Then you can easily use script ```python AuDITee_framework.py``` to run AuDITee quickly.
 
 The main function is ```run_AuDITee()```, with required parameters project id, we define it in real_data_stream.data_id_2name
 
@@ -71,6 +71,22 @@ Testing is costly and time-consuming. If you only want to verify whether AuDITee
 We provide the results of our tests with three different seeds.
 All testing results are in ```dataset/data/<project>_testing_results```
 
-You can run ```python test_main.py``` in ```codes/``` (soon)
+To answer RQ1:
 
-You can run ODaSC, HumLa, and ECo-HumLa by run ```main.py``` in ```codes/```
+1 You can run ```python test_main.py``` in ```codes/```
+
+2 You can run ODaSC, HumLa, and ECo-HumLa by run ```main.py``` in ```codes/```
+
+To answer RQ2:
+
+1 Firstly, run AuDITee using script ```python test_main.py```, then it store commits which are predicted defective in ```dataset/data/<project>_testing_results```.
+
+2 Secondly, run ODaSC by run ```main.py```, then it store commits which are predicted defective in ```dataset/data/<project>_testing_results```.
+
+3 Thirdly, ```cd dataset/data/<project>_testing_results```, you can see 6 scripts:
+- compute_computation_resources.py: get testing resources of AuDITee and ratio of test resources consumed by AuDITee to test resources consumed by DynaMOSA.
+- compute_computation_resources_waiting_time.py: get testing resources of ODaSC Ratio of test resources consumed by ODaSC to test resources consumed by DynaMOSA.
+- compute_test_recall_0.py: get 1 - Testing False Alarm of AuDITee.
+- compute_test_recall_0_waiting_time.py: get 1 - Testing False Alarm of ODaSC.
+- compute_test_recall_1.py: get Testing Recall 1 of AuDITee.
+- compute_test_recall_1_waiting_time.py: get Testing Recall 1 of ODaSC.
