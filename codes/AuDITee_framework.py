@@ -25,7 +25,7 @@ INVALID_VALUE, LABELS = -1, [0, 1]
 dir_rslt_save = "../results/rslt.save/"
 
 
-def run_AuDITee(project_id=0, seeds=range(1), verbose_int=0, is_plot=False):
+def run_AuDITee(project_id=2, seeds=range(1), verbose_int=0, is_plot=False):
 
     # prepare
     project_name, n_test = data_id_2name(project_id)
@@ -168,7 +168,7 @@ def run_AuDITee(project_id=0, seeds=range(1), verbose_int=0, is_plot=False):
                 bash_script_path = './run_test.sh'
 
                 # 构建bash命令，包括脚本路径和参数
-                bash_command = bash_script_path + ' ' + pre_commit_id + ' ' + commit_id
+                bash_command = bash_script_path + ' ' + project_name + ' ' + pre_commit_id + ' ' + commit_id + ' ' + str(seed)
 
                 # 执行bash命令
                 result = subprocess.run(bash_command, capture_output=True, text=True, shell=True)
@@ -178,16 +178,16 @@ def run_AuDITee(project_id=0, seeds=range(1), verbose_int=0, is_plot=False):
                 # print("test output result+--+--================================================================")
                 status = result.stdout
                 # status = lines[-1]
-                # print(str(status))
+                print(str(status))
                 # print(status)
                 test_label = 0
-                if "pass" in status:
+                if "status is:  ->pass" in status:
                     # print("pre commit id is : " + str(pre_commit_id))
                     # print("commit id is : " + str(commit_id))
                     # print("test output result pass ===@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@2")
                     print("OUTPUT==>AuDITee confirms clean in commit:" + str(commit_id))
                     test_label = 0
-                elif "fail" in status:
+                elif "status is:  ->fail" in status:
                     # print("pre commit id is : " + str(pre_commit_id))
                     # print("commit id is : " + str(commit_id))
                     # print("test output result fail ===@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@2")
