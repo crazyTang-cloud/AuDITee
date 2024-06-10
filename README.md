@@ -86,7 +86,7 @@ To answer RQ2:
 3 Thirdly, ```cd dataset/data/<project>_testing_results```, you can see 6 scripts:
 - compute_computation_resources.py: get testing resources of AuDITee and ratio of test resources consumed by AuDITee to test resources consumed by DynaMOSA.
 - compute_computation_resources_waiting_time.py: get testing resources of ODaSC Ratio of test resources consumed by ODaSC to test resources consumed by DynaMOSA.
-- compute_test_recall_0.py: get 1 - Testing False Alarm of AuDITee.
-- compute_test_recall_0_waiting_time.py: get 1 - Testing False Alarm of ODaSC.
+- compute_test_false_alarm.py: get Testing False Alarm of AuDITee.
+- compute_test_false_alarm_waiting_time.py: get Testing False Alarm of ODaSC.
 - compute_test_recall_1.py: get Testing Recall 1 of AuDITee.
 - compute_test_recall_1_waiting_time.py: get Testing Recall 1 of ODaSC.
