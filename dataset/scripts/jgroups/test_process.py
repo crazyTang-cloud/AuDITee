@@ -8,37 +8,26 @@ import git
 import pandas as pd
 from pathlib import Path
 
-# #获取脚本的绝对路径
-# script_dir = os.path.dirname(os.path.abspath(__file__))
-#
-# # 切换到脚本所在的目录
-# os.chdir(script_dir)
 
-
-# 获取当前脚本所在目录的Path对象
 script_path = Path(__file__).resolve().parent
 
 # os.system("cd " + str(script_path))
 subprocess.run(["cd", str(script_path)], shell=True)
 
-# 构建完整的文件路径
+
 file_path = script_path / 'build.sh'
-# 获取commit信息 # {"commit":"abcde12345","date":"20230414","summary":"xxx"}
+# get commit info # {"commit":"abcde12345","date":"20230414","summary":"xxx"}
 repo = git.Repo('./')
-# 遍历仓库的所有commit
+
 repo.git.checkout('master', force=True)
 
 
 
-# build_sh_exist = 1
-# mvn_exist = 0
-
-#获得差异文件
 def get_commit_diff_file(commit_id):
     result_paths = []
 
     commit = repo.commit(commit_id)
-    # 获取commit修改的文件列表
+
     modified_files = commit.stats.files
 
     for file_path, stats in modified_files.items():
@@ -52,7 +41,7 @@ def get_commit_diff_file(commit_id):
 
 def checkout_commit(commit_id):
     command = "rm build.properties"
-    # 使用subprocess执行命令
+
     subprocess.run(command, shell=True)
     # os.system(command)
     subprocess.run(['git', 'checkout', '--', '.'], shell=True)
@@ -63,14 +52,14 @@ def build(mvn=False):
     try:
         if not mvn:
             command = "rm -r classes"
-            # 使用subprocess执行命令
+
             subprocess.run(command, shell=True)
             # os.system(command)
             subprocess.run(["build.sh"], shell=True, check=True)
             # os.system('build.sh')
         else:
             command = "rm -r target"
-            # 使用subprocess执行命令
+
             subprocess.run(command, shell=True)
             # os.system(command)
             subprocess.run(["mvn", "clean", "install", "-Dmaven.test.skip=true"], shell=True, check=True)
@@ -79,27 +68,26 @@ def build(mvn=False):
         raise subprocess.CalledProcessError("build error")
 
 def regular_path(path):
-    # 将包名和类名转化为文件路径
-    # 分割包名和类名
+
     parts = path.split(".")
-    # 将包名部分转化为目录结构，并加上"evosuite-tests/"前缀
+
     directory_path = "/".join(parts[:-1]).replace(".", "/")
     file_name = parts[-1]
-    # 组合完整的文件路径
+
     return f"evosuite-tests/{directory_path}/{file_name}"
 
 def generate_testsuite(result_paths, seed=1, mvn=False):
     command = "rm -r evosuite-report"
-    # 使用subprocess执行命令
+
     subprocess.run(command, shell=True)
     # os.system(command)
     command = "rm -r evosuite-tests"
-    # 使用subprocess执行命令
+
     subprocess.run(command, shell=True)
     # os.system(command)
     print("start generate_testsuite......................................................................................")
 
-    # 生成测试用例
+
     if not mvn:
         print(
             "start generate_testsuite without mvn----@@@@@@@@@2......................................................................................")

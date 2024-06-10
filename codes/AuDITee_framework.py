@@ -140,11 +140,7 @@ def run_AuDITee(project_id=2, seeds=range(1), verbose_int=0, is_plot=False):
             """test: predict with classifiers"""
             test_y_pre[tt] = classifier.predict(test_X)[0]
 
-            """[core] HumLa (ECo-HumLa)"""
-            # The human noise is 1-sided, i.e., for y_pre = 1
-            #     if y_tru = 0: y_human = 0
-            #     if y_tru = 1: y_human may be 0 (wrong) or 1 (correct)
-            new_1data = test_1data  # overwritten if correct human label, vip
+            new_1data = test_1data  # overwritten if testing label, vip
             sota_X, sota_churn, sota_time, sota_y_obv, sota_y_tru = \
                 np.empty((0, n_fea)), np.empty(0), np.empty(0), np.empty(0), np.empty(0)  # init empty, required
             if test_y_pre[tt] == 1:
@@ -157,20 +153,19 @@ def run_AuDITee(project_id=2, seeds=range(1), verbose_int=0, is_plot=False):
                 # print("pre commit id is : " + str(pre_commit_id))
                 # print("commit id is : " + str(commit_id))
 
-                #获取脚本的绝对路径
+
                 script_dir = os.path.dirname(os.path.abspath(__file__))
 
-                # 切换到脚本所在的目录
+
                 os.chdir(script_dir)
 
 
-                # 定义bash脚本的路径和参数
                 bash_script_path = './run_test.sh'
 
-                # 构建bash命令，包括脚本路径和参数
+                # create bash command
                 bash_command = bash_script_path + ' ' + project_name + ' ' + pre_commit_id + ' ' + commit_id + ' ' + str(seed)
 
-                # 执行bash命令
+                # run bush command
                 result = subprocess.run(bash_command, capture_output=True, text=True, shell=True)
 
                 # result = os.popen(bash_command)

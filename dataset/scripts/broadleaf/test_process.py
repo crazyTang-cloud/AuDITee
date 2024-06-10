@@ -11,19 +11,19 @@ import ast
 import re
 
 import pandas as pd
-# 读取第二个CSV文件
+
 df = pd.read_csv('../broadleaf_final.csv')
 df_map = {}
 for i in range(len(df)):
     df_map[df.iloc[i]["commit_id"]] = (df.iloc[i]["pre_commit_id"], df.iloc[i]["fix_commit_id"])
 
-# 获取当前脚本所在目录的Path对象
+
 script_path = Path(__file__).resolve().parent
 
 subprocess.run(["cd", str(script_path)], shell=True)
 
 repo = git.Repo('./')
-# 遍历仓库的所有commit
+
 repo.git.checkout('master', force=True)
 
 def handle_diff_file(diff_file):
@@ -37,23 +37,22 @@ def handle_diff_file(diff_file):
 
 
 def extract_project_and_class(path):
-    # 如果路径中包含src/main/java/，则分割并提取项目名和Profile
+
     if 'src/main/java/' in path:
         parts = path.split('src/main/java/')
         return parts[0], parts[1]
-    # 否则，直接返回整个路径作为项目名和Profile（或做进一步的处理）
+
     else:
         parts = path.split('org/')
         return parts[0], "org/" + parts[1]
 
 def regular_path(path):
-    # 将包名和类名转化为文件路径
-    # 分割包名和类名
+    
     parts = path.split(".")
-    # 将包名部分转化为目录结构，并加上"evosuite-tests/"前缀
+   
     directory_path = "/".join(parts[:-1]).replace(".", "/")
     file_name = parts[-1]
-    # 组合完整的文件路径
+    
     return f"evosuite-tests/{directory_path}/{file_name}"
 
 def testing(generate_commit_id,commit_id, diff_list, seed):
@@ -123,15 +122,14 @@ def testing(generate_commit_id,commit_id, diff_list, seed):
             return 0
 
 def get_commit_diff_file(commit_id):
-    # 获取指定提交
+
     commit = repo.commit(commit_id)
 
-    # 获取提交与父提交的差异
+
     diff = commit.diff(commit.parents[0]) if commit.parents else commit.diff(None)
 
     modified_java_files = []
 
-    # 遍历差异获取修改过的.java文件
     for file_diff in diff:
         if file_diff.change_type == 'M' and file_diff.a_path.endswith('.java'):
             if 'test' not in file_diff.a_path.lower():

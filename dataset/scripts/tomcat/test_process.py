@@ -11,19 +11,19 @@ import ast
 import re
 
 import pandas as pd
-# 读取第二个CSV文件
+
 df = pd.read_csv('../tomcat_final.csv')
 df_map = {}
 for i in range(len(df)):
     df_map[df.iloc[i]["commit_id"]] = (df.iloc[i]["pre_commit_id"], df.iloc[i]["fix_commit_id"])
 
-# 获取当前脚本所在目录的Path对象
+
 script_path = Path(__file__).resolve().parent
 
 subprocess.run(["cd", str(script_path)], shell=True)
 
 repo = git.Repo('./')
-# 遍历仓库的所有commit
+
 repo.git.checkout('master', force=True)
 
 
@@ -74,15 +74,14 @@ def testing(generate_commit_id, commit_id, diff_list, seed=1):
 
 
 def get_commit_diff_file(commit_id):
-    # 获取指定提交
+
     commit = repo.commit(commit_id)
 
-    # 获取提交与父提交的差异
+
     diff = commit.diff(commit.parents[0]) if commit.parents else commit.diff(None)
 
     modified_java_files = []
 
-    # 遍历差异获取修改过的.java文件
     for file_diff in diff:
         if file_diff.change_type == 'M' and file_diff.a_path.endswith('.java'):
             if 'test' not in file_diff.a_path.lower():

@@ -131,7 +131,7 @@ def run_AuDITee(project_id=0, seeds=range(1,4), verbose_int=0, is_plot=False):
         test_result = pd.read_csv(f'../dataset/data/{project_name}_testing_results/{project_name}_test_pre_seed{seed}.csv')
         commit_result = open(f'../dataset/data/{project_name}_testing_results/{project_name}_sdp_test_commit_seed{seed}.csv', 'w', newline='', encoding='utf-8')
         writer = csv.writer(commit_result)
-        writer.writerow(['commit_id'])  # 写入CSV头部
+        writer.writerow(['commit_id'])
         test_result_ = {}
         for tr in range(len(test_result)):
             test_result_[test_result.iloc[tr][0]] = test_result.iloc[tr][2]
@@ -150,11 +150,7 @@ def run_AuDITee(project_id=0, seeds=range(1,4), verbose_int=0, is_plot=False):
             """test: predict with classifiers"""
             test_y_pre[tt] = classifier.predict(test_X)[0]
 
-            """[core] HumLa (ECo-HumLa)"""
-            # The human noise is 1-sided, i.e., for y_pre = 1
-            #     if y_tru = 0: y_human = 0
-            #     if y_tru = 1: y_human may be 0 (wrong) or 1 (correct)
-            new_1data = test_1data  # overwritten if correct human label, vip
+            new_1data = test_1data  # overwritten if testing label, vip
             sota_X, sota_churn, sota_time, sota_y_obv, sota_y_tru = \
                 np.empty((0, n_fea)), np.empty(0), np.empty(0), np.empty(0), np.empty(0)  # init empty, required
             if test_y_pre[tt] == 1:
@@ -171,56 +167,7 @@ def run_AuDITee(project_id=0, seeds=range(1,4), verbose_int=0, is_plot=False):
                         test_X, np.array([test_churn]), np.array([test_time[tt]]), np.array([test_y_tru[tt]])
                     sota_y_obv = np.array([test_label])  # note np.array([...])
                     new_1data = np.empty((0, data_ptrn.shape[1]))  # overwritten, vip
-                # f = open('../dataset/data.inuse/JGroups/data_temp.txt','r')
-                #
-                # status = f.readline()
-        #         if "fail" in status:
-        #             test_results[commit_id] = 1
-        #         elif "pass" in status:
-        #             test_results[commit_id] = 0
-        #         else:
-        #             test_results[commit_id] = -1
-        #
-        #         print("test_results length now is:" + str(len(test_results)))
-        #         # f.close()
-        #
-        # print("total:"+str(len(test_results)))
-        #
-        # df = pd.read_csv("../dataset/data.inuse/jgroups_final.csv")
-        #
-        # test_bug = 0
-        # for key in test_results.keys():
-        #     if test_results[key] == 1:
-        #         test_bug += 1
-        #
-        # print("test bug:" + str(test_bug))
-        #
-        # pre_true = 0
-        # bug_true = 0
-        # for i in range(len(df)):
-        #     if df.iloc[i]['commit-id'] in test_results.keys() and df.iloc[i]['contains_bug'] == test_results[df.iloc[i]['commit-id']]:
-        #         pre_true += 1
-        #         if df.iloc[i]['contains_bug'] == 1:
-        #             bug_true += 1
-        #
-        # print("test true:" + str(pre_true))
-        # print("test bug true:" + str(bug_true))
-
-                # print(return_code)
-            #     sota_X, sota_churn, sota_time, sota_y_tru = \
-            #         test_X, np.array([test_churn]), np.array([test_time[tt]]), np.array(return_code)
-            #     # 1-sided human labeling noise
-            #     if sota_y_tru == 1:
-            #         sota_y_obv = np.array([test_y_tru[tt]])  # note np.array([...])
-            #         new_1data = np.empty((0, data_ptrn.shape[1]))  # overwritten, vip
-            #     elif sota_y_tru == 0:  # no label noise
-            #         sota_y_obv = np.array([test_y_tru[tt]])  # note np.array([...])
-            #         new_1data = np.empty((0, data_ptrn.shape[1]))  # overwritten, vip
-            #     elif sota_y_tru == -1:
-            #         print("test output -1")
-            #     else:
-            #         raise Exception("the class label should be 0/1/-1 exclusively.")
-            #
+                
             """get the new train data_stream batch"""
             data_buffer, new_train_def, new_train_cln, new_train_unl = set_train_stream(
                 prev_test_time, test_time[tt], new_1data, data_ind_reset, data_buffer, WAIT_DAYS)
