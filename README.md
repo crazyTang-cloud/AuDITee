@@ -1,6 +1,6 @@
 *********************************************************************************************
 ## Dependencies
-`AuDITe` work with Python 3.9+, Java 8, and Maven 3.9.6.
+`AuDITee` work with Python 3.9+, Java 8, and Maven 3.9.6.
 
 `AuDITee` require [numpy](www.numpy.org) to be already installed in your system. 
 There are multiple ways to install `numpy`, and the easiest one is
