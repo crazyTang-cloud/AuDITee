@@ -25,7 +25,7 @@ INVALID_VALUE, LABELS = -1, [0, 1]
 dir_rslt_save = "../results/rslt.save/"
 
 
-def run_AuDITee(project_id=2, seeds=range(1), verbose_int=0, is_plot=False):
+def run_AuDITee(project_id=2, seeds=range(1), selector=1, verbose_int=0, tau=0.001, is_plot=False):
 
     # prepare
     project_name, n_test = data_id_2name(project_id)
@@ -104,6 +104,9 @@ def run_AuDITee(project_id=2, seeds=range(1), verbose_int=0, is_plot=False):
     acc_train_churn_np = np.empty((len(seeds)))  # init
     nb_pred_y_np = np.empty((len(seeds), 2))
     for ss, seed in enumerate(seeds):
+        s4_threshold = 0.5
+        s5_threshold = 0.0
+        my_rng = check_random_state(seed)
         if is_plot:
             x_lim, y_lim = None, None
 
@@ -138,75 +141,84 @@ def run_AuDITee(project_id=2, seeds=range(1), verbose_int=0, is_plot=False):
             test_y_tru[tt] = test_1data[:, data_ind_reset.id_y]
 
             """test: predict with classifiers"""
-            test_y_pre[tt] = classifier.predict(test_X)[0]
+            # test_y_pre[tt] = classifier.predict(test_X)[0]
+            y_pre_prob_ = classifier.predict_proba(test_X)[0]
+            y_pre_diff = y_pre_prob_[1] - y_pre_prob_[0]
 
             new_1data = test_1data  # overwritten if testing label, vip
             sota_X, sota_churn, sota_time, sota_y_obv, sota_y_tru = \
                 np.empty((0, n_fea)), np.empty(0), np.empty(0), np.empty(0), np.empty(0)  # init empty, required
-            if test_y_pre[tt] == 1:
-                # overwrite empty when correct human labeling; note np.array([...]), vip
-                #todo test to get test_y_tru
+            pre_commit_id = test_commit.iloc[test_step]['pre_commit_id']
+            commit_id = test_commit.iloc[test_step]['commit_id']
+            random_variable = my_rng.uniform(0, 1)
 
-                pre_commit_id = test_commit.iloc[test_step]['pre_commit_id']
-                commit_id = test_commit.iloc[test_step]['commit_id']
-
-                # print("pre commit id is : " + str(pre_commit_id))
-                # print("commit id is : " + str(commit_id))
-
-
-                script_dir = os.path.dirname(os.path.abspath(__file__))
-
-
-                os.chdir(script_dir)
-
-
-                bash_script_path = './run_test.sh'
-
-                # create bash command
-                bash_command = bash_script_path + ' ' + project_name + ' ' + pre_commit_id + ' ' + commit_id + ' ' + str(seed)
-
-                # run bush command
-                result = subprocess.run(bash_command, capture_output=True, text=True, shell=True)
-
-                # result = os.popen(bash_command)
-
-                # print("test output result+--+--================================================================")
-                status = result.stdout
-                # status = lines[-1]
-                print(str(status))
-                # print(status)
-                test_label = 0
-                if "status is:  ->pass" in status:
-                    # print("pre commit id is : " + str(pre_commit_id))
-                    # print("commit id is : " + str(commit_id))
-                    # print("test output result pass ===@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@2")
-                    print("OUTPUT==>AuDITee confirms clean in commit:" + str(commit_id))
-                    test_label = 0
-                elif "status is:  ->fail" in status:
-                    # print("pre commit id is : " + str(pre_commit_id))
-                    # print("commit id is : " + str(commit_id))
-                    # print("test output result fail ===@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@2")
-                    print("OUTPUT==>AuDITee confirms defective in commit:" + str(commit_id))
-                    test_label = 1
+            if selector == 0:
+                if y_pre_prob_[1] >= 0.5:
+                    test_label = do_test(project_name,pre_commit_id,commit_id,seed)
+                    if test_label >= 0:
+                        sota_X, sota_churn, sota_time, sota_y_tru = \
+                            test_X, np.array([test_churn]), np.array([test_time[tt]]), np.array([test_y_tru[tt]])
+                        sota_y_obv = np.array([test_label])  # note np.array([...])
+                        new_1data = np.empty((0, data_ptrn.shape[1]))  # overwritten, vip
                 else:
-                    # print("pre commit id is : " + str(pre_commit_id))
-                    # print("commit id is : " + str(commit_id))
-                    # print("test output result error ===@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@2")
-                    print("OUTPUT==>AuDITee predicts defect-inducing in commit:" + str(commit_id))
-                    test_label = -1
+                    print("OUTPUT==>AuDITee predicts clean in commit:" + str(commit_id))
+            elif selector == 1:
+                if random_variable <= y_pre_prob_[1]:
+                    test_label = do_test(project_name, pre_commit_id, commit_id, seed)
+                    if test_label >= 0:
+                        sota_X, sota_churn, sota_time, sota_y_tru = \
+                            test_X, np.array([test_churn]), np.array([test_time[tt]]), np.array([test_y_tru[tt]])
+                        sota_y_obv = np.array([test_label])  # note np.array([...])
+                        new_1data = np.empty((0, data_ptrn.shape[1]))  # overwritten, vip
+                else:
+                    if y_pre_prob_[1] >= 0.5:
+                        print("OUTPUT==>AuDITee predicts defective in commit:" + str(commit_id))
+                    else:
+                        print("OUTPUT==>AuDITee clean defective in commit:" + str(commit_id))
+            elif selector == 2:
+                if random_variable <= y_pre_diff:
+                    test_label = do_test(project_name, pre_commit_id, commit_id, seed)
+                    if test_label >= 0:
+                        sota_X, sota_churn, sota_time, sota_y_tru = \
+                            test_X, np.array([test_churn]), np.array([test_time[tt]]), np.array([test_y_tru[tt]])
+                        sota_y_obv = np.array([test_label])  # note np.array([...])
+                        new_1data = np.empty((0, data_ptrn.shape[1]))  # overwritten, vip
+                else:
+                    if y_pre_prob_[1] >= 0.5:
+                        print("OUTPUT==>AuDITee predicts defective in commit:" + str(commit_id))
+                    else:
+                        print("OUTPUT==>AuDITee clean defective in commit:" + str(commit_id))
+            elif selector == 3:
+                if y_pre_prob_[1] >= s4_threshold:
+                    test_label = do_test(project_name, pre_commit_id, commit_id, seed)
+                    if test_label >= 0:
+                        sota_X, sota_churn, sota_time, sota_y_tru = \
+                            test_X, np.array([test_churn]), np.array([test_time[tt]]), np.array([test_y_tru[tt]])
+                        sota_y_obv = np.array([test_label])  # note np.array([...])
+                        new_1data = np.empty((0, data_ptrn.shape[1]))  # overwritten, vip
 
+                    s4_threshold = change_s4_threshold(test_label, s4_threshold, tau)
+                else:
+                    if y_pre_prob_[1] >= 0.5:
+                        print("OUTPUT==>AuDITee predicts defective in commit:" + str(commit_id))
+                    else:
+                        print("OUTPUT==>AuDITee clean defective in commit:" + str(commit_id))
+            elif selector == 4:
+                if y_pre_diff >= s5_threshold:
+                    test_label = do_test(project_name, pre_commit_id, commit_id, seed)
+                    if test_label >= 0:
+                        sota_X, sota_churn, sota_time, sota_y_tru = \
+                            test_X, np.array([test_churn]), np.array([test_time[tt]]), np.array([test_y_tru[tt]])
+                        sota_y_obv = np.array([test_label])  # note np.array([...])
+                        new_1data = np.empty((0, data_ptrn.shape[1]))  # overwritten, vip
 
-                if test_label >= 0:
-                    sota_X, sota_churn, sota_time, sota_y_tru = \
-                        test_X, np.array([test_churn]), np.array([test_time[tt]]), np.array([test_y_tru[tt]])
-                    sota_y_obv = np.array([test_label])  # note np.array([...])
-                    new_1data = np.empty((0, data_ptrn.shape[1]))  # overwritten, vip
-                # f = open('../dataset/data.inuse/JGroups/data_temp.txt','r')
-                #
-                # status = f.readline()
-            else:
-                commit_id = test_commit.iloc[test_step]['commit_id']
-                print("OUTPUT==>AuDITee predicts clean in commit:" + str(commit_id))
+                    s5_threshold = change_s5_threshold(test_label, s5_threshold, tau)
+                else:
+                    if y_pre_prob_[1] >= 0.5:
+                        print("OUTPUT==>AuDITee predicts defective in commit:" + str(commit_id))
+                    else:
+                        print("OUTPUT==>AuDITee clean defective in commit:" + str(commit_id))
+
             """get the new train data_stream batch"""
             data_buffer, new_train_def, new_train_cln, new_train_unl = set_train_stream(
                 prev_test_time, test_time[tt], new_1data, data_ind_reset, data_buffer, WAIT_DAYS)
@@ -327,106 +339,72 @@ def run_AuDITee(project_id=2, seeds=range(1), verbose_int=0, is_plot=False):
         pfs_tt = np.column_stack((gmean_tt_ave_ss, r1_tt_ave_ss, r0_tt_ave_ss))
         plot_on_1pf(pfs_tt, ["gmean", "r1", "r0"], my_method)
 
+def change_s4_threshold(test_result, threshold, tau):
+    # test 1
+    if test_result == 1:
+        threshold -= tau
+        threshold = threshold if threshold >= 0 else 0
+        assert threshold >= 0
+    # test 0
+    elif test_result == 0:
+        threshold += tau
+        threshold = threshold if threshold <= 0.5 else 0.5
+        assert threshold <= 0.5
 
-# def compute_human_churn(human_eff="auto_ecohumla2", project_id=0, N_TEST=10000, SEEDS=range(100)):
-#     """For RQ2.2
-#     Compute the cumulative code churn of HumLa and Eco-HumLa spent in the human labeling process.
-#
-#     This is to answer RQ2.3 to investigate whether Eco-HumLa can really encourage a large number of defects to be found
-#     than HumLa at 50%-human effort.
-#     """
-#
-#     # for RQ2.2: Eco-HumLa vs HumLa at 50%-human effort
-#     human_dict = {"has_human": True, "human_err": 0, "human_eff": human_eff}
-#     assert isinstance(human_eff, int) or isinstance(human_eff, float) or isinstance(human_eff, str)
-#
-#     # prepare to load the basic results
-#     para_csv = load_para_csv()
-#     n_tree, theta_imb, theta_cl = lookup_best_para(data_id_2name(project_id), WAIT_DAYS, CLF_NAME, para_csv)
-#     from_rslt_dir = rslt_dir(CLF_NAME, human_dict, project_id, WAIT_DAYS, n_tree, theta_imb, theta_cl)
-#     from_rslt_dir += "/T" + str(N_TEST) + "/"
-#
-#     cumulative_code_churn = np.empty((len(SEEDS)))
-#     for ss, seed in enumerate(SEEDS):
-#         # filenames
-#         flnm_test = "%s%s.rslt_test.s%d" % (from_rslt_dir, CLF_NAME, seed)
-#         flnm_train = "%s%s.rslt_train.s%d" % (from_rslt_dir, CLF_NAME, seed)
-#         # debug during post-RQs
-#         exist_result = os.path.exists(flnm_test) and os.path.exists(flnm_train)
-#         if not exist_result:  # compute
-#             run_AuDITee(project_id, -1, False)  # not print
-#         rslt_train = np.loadtxt(flnm_train)
-#
-#         # compute for RQ2.3:"""
-#         id_train_human = np.where(rslt_train[:, 0] == rslt_train[:, 1])[0]
-#         id_code_churn = -1  # manual check
-#         cumulative_code_churn[ss] = np.nansum(rslt_train[id_train_human, id_code_churn])  # accumulated churn
-#     # average cumulative code churns across seeds
-#     cum_code_churn_ave = np.nanmean(cumulative_code_churn)
-#     cum_code_churn_std = np.nanstd(cumulative_code_churn)
-#
-#     # print title info
-#     if isinstance(human_eff, str):
-#         if human_eff.lower() == "auto_ecohumla2".lower():
-#             my_humla = "Eco_HumLa"
-#         else:
-#             raise Exception("Error human_eff=%s" % str(human_eff))
-#     elif isinstance(human_eff, float) or isinstance(human_eff, int):
-#         my_humla = "HumLa at effort=%s" % str(human_eff)
-#     else:
-#         raise Exception("Error type of human_eff as %s" % str(human_eff))
-#     print("\t%s: %.2f+-%.2f" % (my_humla, cum_code_churn_ave/1000, cum_code_churn_std/1000))
-#     # return cum_code_churn_ave, cum_code_churn_std
-#
-#
-# def compute_human_PFs(human_eff="auto_ecohumla2", project_id=0, N_TEST=10000, SEEDS=range(100)):
-#     """For RQ2.3
-#     Compute the human recall~1 defined in Eq.5 and human false alarm defined in Eq.6 of the FSE manuscript
-#     between Eco-HumLa and HumLa at 50%-human effort.
-#
-#     This is to answer RQ2.3 investigating whether Eco-HumLa can really encourage a large number of defects to be found
-#     than HumLa at 50%-human effort.
-#
-#     The first part of the codes are the same to "compute_human_churn" for RQ2.2.
-#     """
-#
-#     # for RQ2.3: Eco-HumLa vs HumLa at 50%-human effort
-#     human_dict = {"has_human": True, "human_err": 0, "human_eff": human_eff}
-#     assert isinstance(human_eff, int) or isinstance(human_eff, float) or isinstance(human_eff, str)
-#
-#     # prepare to load the basic results
-#     para_csv = load_para_csv()
-#     n_tree, theta_imb, theta_cl = lookup_best_para(data_id_2name(project_id), WAIT_DAYS, CLF_NAME, para_csv)
-#     from_rslt_dir = rslt_dir(CLF_NAME, human_dict, project_id, WAIT_DAYS, n_tree, theta_imb, theta_cl)
-#     from_rslt_dir += "/T" + str(N_TEST) + "/"
-#
-#     # init output across seeds for a project
-#     human_recall1_np = np.empty((len(SEEDS)))
-#     human_false_alarm_np = np.empty((len(SEEDS)))
-#     for ss, seed in enumerate(SEEDS):
-#         # filenames
-#         flnm_test = "%s%s.rslt_test.s%d" % (from_rslt_dir, CLF_NAME, seed)
-#         flnm_train = "%s%s.rslt_train.s%d" % (from_rslt_dir, CLF_NAME, seed)
-#         # debug during post-RQs
-#         exist_result = os.path.exists(flnm_test) and os.path.exists(flnm_train)
-#         if not exist_result:  # compute
-#             run_HumLa(human_dict, project_id, -1, False)  # not print
-#         else:  # load
-#             rslt_test = np.loadtxt(flnm_test)
-#             rslt_train = np.loadtxt(flnm_train)
-#             """compute for RQ2.3:"""
-#             nb_y1 = np.sum(rslt_test[:, 1] == 1)
-#             nb_y0 = np.sum(rslt_test[:, 1] == 0)
-#             nb_human_y1 = np.sum(np.logical_and(rslt_train[:, 0] == rslt_train[:, 1], rslt_train[:, 2] == 1))
-#             nb_human_y0 = np.sum(np.logical_and(rslt_train[:, 0] == rslt_train[:, 1], rslt_train[:, 2] == 0))
-#             # compute
-#             human_recall1_np[ss] = nb_human_y1 / nb_y1
-#             human_false_alarm_np[ss] = nb_human_y0 / nb_y0
-#     # ave results across seeds
-#     human_recall1 = np.nanmean(human_recall1_np)
-#     human_false_alarm = np.nanmean(human_false_alarm_np)
-#     return human_recall1, human_false_alarm
+    return threshold
 
+
+def change_s5_threshold(test_result, threshold, tau):
+    if test_result == 1:
+        threshold -= tau
+        threshold = threshold if threshold >= 0 else 0
+        assert threshold >= 0
+    # test 0
+    elif test_result == 0:
+        threshold += tau
+        threshold = threshold if threshold <= 1 else 1
+        assert threshold <= 1
+    return threshold
+
+def do_test(project_name,pre_commit_id,commit_id,seed):
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+
+    os.chdir(script_dir)
+
+    bash_script_path = './run_test.sh'
+
+    # create bash command
+    bash_command = bash_script_path + ' ' + project_name + ' ' + pre_commit_id + ' ' + commit_id + ' ' + str(seed)
+
+    # run bush command
+    result = subprocess.run(bash_command, capture_output=True, text=True, shell=True)
+
+
+    status = result.stdout
+    # status = lines[-1]
+    # print(str(status))
+    # print(status)
+    test_label = 0
+    if "status is:  ->pass" in status:
+        # print("pre commit id is : " + str(pre_commit_id))
+        # print("commit id is : " + str(commit_id))
+        # print("test output result pass ===@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+        print("OUTPUT==>AuDITee detects clean in commit:" + str(commit_id))
+        test_label = 0
+    elif "status is:  ->fail" in status:
+        # print("pre commit id is : " + str(pre_commit_id))
+        # print("commit id is : " + str(commit_id))
+        # print("test output result fail ===@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+        print("OUTPUT==>AuDITee detects defective in commit:" + str(commit_id))
+        test_label = 1
+    else:
+        # print("pre commit id is : " + str(pre_commit_id))
+        # print("commit id is : " + str(commit_id))
+        # print("test output result error ===@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+        print("OUTPUT==>AuDITee predicts defective in commit:" + str(commit_id))
+        test_label = -1
+
+    return test_label
 
 def comp_cl_upper(y_true, y_obv):
     """compute CLs for the upper bound, also the benchmark CLs.

@@ -26,8 +26,7 @@ INVALID_VALUE, LABELS = -1, [0, 1]
 dir_rslt_save = "../results/rslt.save/"
 
 
-def run_AuDITee(project_id=0, seeds=range(1,4), verbose_int=0, is_plot=False):
-
+def run_AuDITee(project_id=0, seeds=range(0, 10), selector=1, verbose_int=0, tau=0.001, is_plot=False):
     # prepare
     project_name, n_test = data_id_2name(project_id)
     if is_plot:
@@ -44,7 +43,7 @@ def run_AuDITee(project_id=0, seeds=range(1,4), verbose_int=0, is_plot=False):
     test_commit = commit_stream[use_data]
 
     # handle negative #test
-    n_data_all, n_fea = XX_aug.shape[0], XX_aug.shape[1]-1  # X_aug = [X_trans, churn_np]
+    n_data_all, n_fea = XX_aug.shape[0], XX_aug.shape[1] - 1  # X_aug = [X_trans, churn_np]
     assert n_fea == 12, "# transformed #fea should be 12. Sth. must be wrong."
     # if N_TEST < 0:
     #     N_TEST += n_data_all
@@ -105,6 +104,9 @@ def run_AuDITee(project_id=0, seeds=range(1,4), verbose_int=0, is_plot=False):
     acc_train_churn_np = np.empty((len(seeds)))  # init
     nb_pred_y_np = np.empty((len(seeds), 2))
     for ss, seed in enumerate(seeds):
+        s4_threshold = 0.5
+        s5_threshold = 0.0
+        my_rng = check_random_state(seed)
         if is_plot:
             x_lim, y_lim = None, None
 
@@ -128,13 +130,65 @@ def run_AuDITee(project_id=0, seeds=range(1,4), verbose_int=0, is_plot=False):
 
         # test_results = {}
 
-        test_result = pd.read_csv(f'../dataset/data/{project_name}_testing_results/{project_name}_test_pre_seed{seed}.csv')
-        commit_result = open(f'../dataset/data/{project_name}_testing_results/{project_name}_sdp_test_commit_seed{seed}.csv', 'w', newline='', encoding='utf-8')
-        writer = csv.writer(commit_result)
-        writer.writerow(['commit_id'])
+        test_result = pd.read_csv(
+            f'../dataset/data/{project_name}_testing_results/{project_name}_test_pre_seed{seed}.csv')
         test_result_ = {}
         for tr in range(len(test_result)):
             test_result_[test_result.iloc[tr][0]] = test_result.iloc[tr][2]
+
+        if selector == 0:
+            file_path = f'../dataset/data/results/{project_name}/AuDITee_S1/seed{seed}/rst.csv'
+            # 确保目录存在，如果不存在则创建
+            directory = os.path.dirname(file_path)
+            if not os.path.exists(directory):
+                os.makedirs(directory)
+            commit_result = open(file_path, 'w', newline='', encoding='utf-8')
+            writer = csv.writer(commit_result)
+            writer.writerow(['commit_id', 'SDP_predict', 'commit_guru_result', 'test_result'])  # 写入CSV头部
+        elif selector == 1:
+            file_path = f'../dataset/data/results/{project_name}/AuDITee_S2/seed{seed}/rst.csv'
+            # 确保目录存在，如果不存在则创建
+            directory = os.path.dirname(file_path)
+            if not os.path.exists(directory):
+                os.makedirs(directory)
+            commit_result = open(file_path, 'w', newline='', encoding='utf-8')
+            writer = csv.writer(commit_result)
+            writer.writerow(['commit_id', 'predict_prob_1', 'SDP_predict', 'commit_guru_result', 'test_result',
+                             'random_variable'])  # 写入CSV头部
+        elif selector == 2:
+            file_path = f'../dataset/data/results/{project_name}/AuDITee_S3/seed{seed}/rst.csv'
+            # 确保目录存在，如果不存在则创建
+            directory = os.path.dirname(file_path)
+            if not os.path.exists(directory):
+                os.makedirs(directory)
+            commit_result = open(file_path, 'w', newline='', encoding='utf-8')
+            writer = csv.writer(commit_result)
+            writer.writerow(
+                ['commit_id', 'predict_prob_1', 'predict_prob_0', 'SDP_predict', 'commit_guru_result', 'test_result',
+                 'random_variable'])  # 写入CSV头部
+        elif selector == 3:
+            file_path = f'../dataset/data/results/{project_name}/AuDITee_S4/tau{tau}/seed{seed}/rst.csv'
+            # 确保目录存在，如果不存在则创建
+            directory = os.path.dirname(file_path)
+            if not os.path.exists(directory):
+                os.makedirs(directory)
+            commit_result = open(file_path, 'w', newline='', encoding='utf-8')
+            writer = csv.writer(commit_result)
+            writer.writerow(['commit_id', 'predict_prob_1', 'SDP_predict', 'commit_guru_result', 'test_result',
+                             'threshold'])  # 写入CSV头部
+        elif selector == 4:
+            file_path = f'../dataset/data/results/{project_name}/AuDITee_S5/tau{tau}/seed{seed}/rst.csv'
+            # 确保目录存在，如果不存在则创建
+            directory = os.path.dirname(file_path)
+            if not os.path.exists(directory):
+                os.makedirs(directory)
+            commit_result = open(file_path, 'w', newline='', encoding='utf-8')
+            writer = csv.writer(commit_result)
+            writer.writerow(
+                ['commit_id', 'predict_prob_1', 'predict_prob_0', 'SDP_predict', 'commit_guru_result', 'test_result',
+                 'threshold'])  # 写入CSV头部
+        else:
+            assert False, "can not find such selector"
 
         # throughout each test time step
         for tt in range(nb_test_act):
@@ -148,26 +202,99 @@ def run_AuDITee(project_id=0, seeds=range(1,4), verbose_int=0, is_plot=False):
             test_y_tru[tt] = test_1data[:, data_ind_reset.id_y]
 
             """test: predict with classifiers"""
-            test_y_pre[tt] = classifier.predict(test_X)[0]
+            # test_y_pre[tt] = classifier.predict(test_X)[0]
+            y_pre_prob_ = classifier.predict_proba(test_X)[0]
+            y_pre_diff = y_pre_prob_[1] - y_pre_prob_[0]
 
             new_1data = test_1data  # overwritten if testing label, vip
             sota_X, sota_churn, sota_time, sota_y_obv, sota_y_tru = \
                 np.empty((0, n_fea)), np.empty(0), np.empty(0), np.empty(0), np.empty(0)  # init empty, required
-            if test_y_pre[tt] == 1:
-                # overwrite empty when correct human labeling; note np.array([...]), vip
-                #todo test to get test_y_tru
-                commit_id = test_commit.iloc[test_step]['commit_id']
+            commit_id = test_commit.iloc[test_step]['commit_id']
+            test_label = test_result_[commit_id]
+            random_variable = my_rng.uniform(0, 1)
 
-                writer.writerow([str(commit_id)])
-                # print(commit_id)
-                test_label = test_result_[commit_id]
+            if selector == 0:
+                SDP_predict = 0
+                if y_pre_prob_[1] >= 0.5:
+                    if test_label >= 0:
+                        sota_X, sota_churn, sota_time, sota_y_tru = \
+                            test_X, np.array([test_churn]), np.array([test_time[tt]]), np.array([test_y_tru[tt]])
+                        sota_y_obv = np.array([test_label])  # note np.array([...])
+                        new_1data = np.empty((0, data_ptrn.shape[1]))  # overwritten, vip
+                    SDP_predict = 1
+                writer.writerow([commit_id, SDP_predict, int(test_1data[0][-1]), test_label])
 
-                if test_label >= 0:
-                    sota_X, sota_churn, sota_time, sota_y_tru = \
-                        test_X, np.array([test_churn]), np.array([test_time[tt]]), np.array([test_y_tru[tt]])
-                    sota_y_obv = np.array([test_label])  # note np.array([...])
-                    new_1data = np.empty((0, data_ptrn.shape[1]))  # overwritten, vip
-                
+            elif selector == 1:
+                if random_variable <= y_pre_prob_[1]:
+                    if test_label >= 0:
+                        sota_X, sota_churn, sota_time, sota_y_tru = \
+                            test_X, np.array([test_churn]), np.array([test_time[tt]]), np.array([test_y_tru[tt]])
+                        sota_y_obv = np.array([test_label])  # note np.array([...])
+                        new_1data = np.empty((0, data_ptrn.shape[1]))  # overwritten, vip
+                SDP_predict = 1 if y_pre_prob_[1] >= 0.5 else 0
+                writer.writerow(
+                    [commit_id, y_pre_prob_[1], SDP_predict, int(test_1data[0][-1]), test_label, random_variable])
+
+            elif selector == 2:
+                if random_variable <= y_pre_diff:
+                    if test_label >= 0:
+                        sota_X, sota_churn, sota_time, sota_y_tru = \
+                            test_X, np.array([test_churn]), np.array([test_time[tt]]), np.array([test_y_tru[tt]])
+                        sota_y_obv = np.array([test_label])  # note np.array([...])
+                        new_1data = np.empty((0, data_ptrn.shape[1]))  # overwritten, vip
+
+                SDP_predict = 1 if y_pre_prob_[1] >= y_pre_prob_[0] else 0
+
+                writer.writerow(
+                    [commit_id, y_pre_prob_[1], y_pre_prob_[0], SDP_predict, int(test_1data[0][-1]), test_label,
+                     random_variable])
+
+            elif selector == 3:
+                if y_pre_prob_[1] >= s4_threshold:
+                    if test_label >= 0:
+                        sota_X, sota_churn, sota_time, sota_y_tru = \
+                            test_X, np.array([test_churn]), np.array([test_time[tt]]), np.array([test_y_tru[tt]])
+                        sota_y_obv = np.array([test_label])  # note np.array([...])
+                        new_1data = np.empty((0, data_ptrn.shape[1]))  # overwritten, vip
+
+                    s4_threshold = change_s4_threshold(test_label, s4_threshold)
+
+                SDP_predict = 1 if y_pre_prob_[1] > 0.5 else 0
+
+                writer.writerow(
+                    [commit_id, y_pre_prob_[1], SDP_predict, int(test_1data[0][-1]), test_label, s4_threshold])
+
+            elif selector == 4:
+                if y_pre_diff >= s5_threshold:
+                    if test_label >= 0:
+                        sota_X, sota_churn, sota_time, sota_y_tru = \
+                            test_X, np.array([test_churn]), np.array([test_time[tt]]), np.array([test_y_tru[tt]])
+                        sota_y_obv = np.array([test_label])  # note np.array([...])
+                        new_1data = np.empty((0, data_ptrn.shape[1]))  # overwritten, vip
+
+                    s5_threshold = change_s5_threshold(test_label, s5_threshold)
+
+                SDP_predict = 1 if y_pre_prob_[1] >= y_pre_prob_[0] else 0
+
+                writer.writerow(
+                    [commit_id, y_pre_prob_[1], y_pre_prob_[0], SDP_predict, int(test_1data[0][-1]), test_label,
+                     s5_threshold])
+
+            # if test_y_pre[tt] == 1:
+            #     # overwrite empty when correct human labeling; note np.array([...]), vip
+            #     # todo test to get test_y_tru
+            #     commit_id = test_commit.iloc[test_step]['commit_id']
+            #
+            #     writer.writerow([str(commit_id)])
+            #     # print(commit_id)
+            #     test_label = test_result_[commit_id]
+            #
+            #     if test_label >= 0:
+            #         sota_X, sota_churn, sota_time, sota_y_tru = \
+            #             test_X, np.array([test_churn]), np.array([test_time[tt]]), np.array([test_y_tru[tt]])
+            #         sota_y_obv = np.array([test_label])  # note np.array([...])
+            #         new_1data = np.empty((0, data_ptrn.shape[1]))  # overwritten, vip
+
             """get the new train data_stream batch"""
             data_buffer, new_train_def, new_train_cln, new_train_unl = set_train_stream(
                 prev_test_time, test_time[tt], new_1data, data_ind_reset, data_buffer, WAIT_DAYS)
@@ -195,7 +322,7 @@ def run_AuDITee(project_id=0, seeds=range(1,4), verbose_int=0, is_plot=False):
             y_train_tru_lst.extend(y_train_tru.tolist())
             if verbose_int >= 2:
                 print("\ttest_step=%d, y_true=%d, y_pre=%d: %s"
-                      % (test_step, test_y_tru[tt], test_y_pre[tt], CLF_NAME))
+                      % (test_step, test_y_tru[tt], y_pre_prob_[1], CLF_NAME))
                 print("\t\tnew_train: y_true=%s, y_obv=%s" % (str(y_train_tru), str(y_train_obv)))
                 print("\t\t#acc_train_all=%d, #acc_train_human=%d" % (nb_train_, nb_train_human_))
 
@@ -220,75 +347,33 @@ def run_AuDITee(project_id=0, seeds=range(1,4), verbose_int=0, is_plot=False):
                     cluster.plot_cluster(X_train_norm, y_train_tru, pca_hd, info, x_lim, y_lim, True)
             prev_test_time = test_time[tt]  # update VIP
 
-        """save returns"""
-        # return 1: rslt_test ~ (test_time, y_true, y_pred)
-        rslt_test = np.vstack((test_time, test_y_tru, test_y_pre)).T
-        # return 2: rslt_train ~ (commit_time, use_time, yy, y_obv, cl, use_cluster, code_churn)
-        cl_pre, use_cluster = np.array(cl_train_lst), np.array(use_cluster_lst)
-        rslt_train = np.vstack((np.array(cmt_time_train_lst), np.array(use_time_train_lst),
-                                np.array(y_train_tru_lst), np.array(y_train_obv_lst),
-                                cl_pre, use_cluster, np.array(code_churn_lst))).T
-        # save
-        to_dir = rslt_dir(CLF_NAME, project_id, n_tree, theta_imb, theta_cl)
-        to_dir += "/T" + str(n_test) + "/"
-        os.makedirs(to_dir, exist_ok=True)
-        # file_name-s
-        flnm_test = "%s%s.rslt_test.s%d" % (to_dir, CLF_NAME, seed)
-        flnm_train = "%s%s.rslt_train.s%d" % (to_dir, CLF_NAME, seed)
-        info_str = ". \tNote: '%d' means invalidity" % INVALID_VALUE
-        np.savetxt(flnm_test, rslt_test, fmt='%d\t %d\t %d',
-                   header="%test_time, yy, y_pre) " + info_str)
-        np.savetxt(flnm_train, rslt_train, fmt='%d %d\t %d\t %d\t %f\t %d\t %.2f',
-                   header="%commit_time, use_time, yy, y_obv, CL, use_cluster, code_churn" + info_str)
 
-        """compute VIP statistics of stream_train"""
-        id_train_human_np = np.where(rslt_train[:, 0] == rslt_train[:, 1])[0]
-        nb_train_human_np[ss] = id_train_human_np.shape[0]
-        nb_train_delay_np[ss] = rslt_train.shape[0] - nb_train_human_np[ss]
-        id_train_churn = -1  # manual check
-        acc_train_churn_np[ss] = np.nansum(rslt_train[id_train_human_np, id_train_churn])  # accumulated churn
-        nb_pred_y_np[ss, 0], nb_pred_y_np[ss, 1] = np.sum(rslt_test[:, 2] == 0), np.sum(rslt_test[:, 2] == 1)  # RQ2
+def change_s4_threshold(test_result, threshold):
+    # test 1
+    if test_result == 1:
+        threshold -= tau
+        threshold = threshold if threshold >= 0 else 0
+        assert threshold >= 0
+    # test 0
+    elif test_result == 0:
+        threshold += tau
+        threshold = threshold if threshold <= 0.5 else 0.5
+        assert threshold <= 0.5
 
-        my_method = "AuDITee prediction result"
-        if verbose_int >= 1:
-            print("\n" + "--" * 20)
-            print("%s - seed=%d: " % (my_method, seed))
-            print("\t nb_train_delay=%d, nb_train_human=%d." % (nb_train_delay_np[ss], nb_train_human_np[ss]))
-            print_pf(rslt_test, rslt_train)
-
-        """PF evaluation throughout test steps"""
-        test_y_tru, test_y_pre = rslt_test[:, 1], rslt_test[:, 2]
-        pfs_tt_dict = eval_pfs(test_y_tru, test_y_pre)
-        gmean_tt, mcc_tt = pfs_tt_dict["gmean_tt"], pfs_tt_dict["mcc_tt"]
-        r1_tt, r0_tt = pfs_tt_dict["recall1_tt"], pfs_tt_dict["recall0_tt"]
-        prec_tt, f1_tt = pfs_tt_dict["precision_tt"], pfs_tt_dict["f1_score_tt"]
-        # assign
-        if ss == 0:  # init
-            n_row, n_col = gmean_tt.shape[0], len(seeds)
-            gmean_tt_ss = np.empty((n_row, n_col))
-            r1_tt_ss, r0_tt_ss = np.copy(gmean_tt_ss), np.copy(gmean_tt_ss)
-            mcc_tt_ss, prec_tt_ss, f1_tt_ss = np.copy(gmean_tt_ss), np.copy(gmean_tt_ss), np.copy(gmean_tt_ss)
-        gmean_tt_ss[:, ss], r1_tt_ss[:, ss], r0_tt_ss[:, ss] = gmean_tt, r1_tt, r0_tt
-        mcc_tt_ss[:, ss], prec_tt_ss[:, ss], f1_tt_ss[:, ss] = mcc_tt, prec_tt, f1_tt
-
-    """ave PF across seeds"""
-    # test info
-    gmean_tt_ave_ss, gmean_tt_std_ss = np.nanmean(gmean_tt_ss, axis=1), np.nanstd(gmean_tt_ss, axis=1)
-    r1_tt_ave_ss, r1_tt_std_ss = np.nanmean(r1_tt_ss, axis=1), np.nanstd(r1_tt_ss, axis=1)
-    r0_tt_ave_ss, r0_tt_std_ss = np.nanmean(r0_tt_ss, axis=1), np.nanstd(r0_tt_ss, axis=1)
-    mcc_tt_ave_ss, mcc_tt_std_ss = np.nanmean(mcc_tt_ss, axis=1), np.nanstd(gmean_tt_ss, axis=1)
-    if verbose_int >= 0:
-        print("\t%s: " % my_method)
-        print("\t\tgmean = %.3f+-%.3f,\n \t\tr1 = %.3f+-%.3f,\n \t\tr0 = %.3f+-%.3f,\n \t\tmcc = %.3f+-%.3f" % (
-            np.nanmean(gmean_tt_ave_ss), np.nanmean(gmean_tt_std_ss),
-            np.nanmean(r1_tt_ave_ss), np.nanmean(r1_tt_std_ss),
-            np.nanmean(r0_tt_ave_ss), np.nanmean(r0_tt_std_ss),
-            np.nanmean(mcc_tt_ave_ss), np.nanmean(mcc_tt_std_ss)))
-    if is_plot:  # pf plot example
-        pfs_tt = np.column_stack((gmean_tt_ave_ss, r1_tt_ave_ss, r0_tt_ave_ss))
-        plot_on_1pf(pfs_tt, ["gmean", "r1", "r0"], my_method)
+    return threshold
 
 
+def change_s5_threshold(test_result, threshold):
+    if test_result == 1:
+        threshold -= tau
+        threshold = threshold if threshold >= 0 else 0
+        assert threshold >= 0
+    # test 0
+    elif test_result == 0:
+        threshold += tau
+        threshold = threshold if threshold <= 1 else 1
+        assert threshold <= 1
+    return threshold
 
 
 def comp_cl_upper(y_true, y_obv):
@@ -439,4 +524,11 @@ def eval_pfs(test_y_tru, test_y_pre, verbose=False):
 
 
 if __name__ == "__main__":
-    run_AuDITee()
+    selector = 4
+    project = 0
+    taus = [0.001,0.002,0.003,0.004,0.005,0.006,0.007,0.008,0.009,0.01]
+    if selector == 3 or selector == 4:
+        for tau in taus:
+            run_AuDITee(project_id=project, selector=selector,tau=tau)
+    else:
+        run_AuDITee(project_id=project, selector=selector)
